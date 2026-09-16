@@ -1,0 +1,11 @@
+.env
+.venv/
+.local-secret
+*.sqlite3
+*.sqlite3-*
+__pycache__/
+*.pyc
+staticfiles/
+frontend/node_modules/
+frontend/.svelte-kit/
+*.log

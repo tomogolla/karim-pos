@@ -1,0 +1,49 @@
+<section class="card customer-picker" data-customer-picker data-search-url="{% url 'customer_search_api' %}">
+  <div class="section-heading"><div><h2>Customer</h2><p>Find your customer in Shopify, or create a new profile.</p></div><span class="badge">{{ bill.name }}</span></div>
+  {% if not shopify_configured %}<div class="notice">Connect Shopify to search and create customer profiles. You can still save walk-in details below.</div>{% endif %}
+  {% if customer_creation.state == 'review' or customer_creation.state == 'sending' %}
+  <div class="notice error"><div><b>Customer creation needs attention</b><p>{{ customer_creation.error|default:'A creation request is in progress. Wait for confirmation before continuing.' }}</p></div></div>
+  {% endif %}
+  {% if bill.shopify_customer %}
+  <div class="selected-customer">
+    <div class="section-heading"><div><span class="eyebrow">SELECTED SHOPIFY CUSTOMER</span><h3>{{ bill.shopify_customer.display_name }}</h3><p>{{ bill.email|default:'No email' }} · {{ bill.phone|default:'No phone' }}</p></div><span class="badge paid">Selected</span></div>
+    <div data-customer-history>
+    {% with c=bill.shopify_customer %}
+      <div class="customer-history">
+        <div><small>LATEST ORDER</small><strong>{% if c.last_order_processed_at %}{{ c.last_order_processed_at|date:'d M Y, H:i' }}{% else %}No accessible order{% endif %}</strong></div>
+        <div><small>LAST ORDER TOTAL</small><strong>{% if c.last_order_amount != None %}{{ c.last_order_currency }} {{ c.last_order_amount|floatformat:2 }}{% else %}—{% endif %}</strong></div>
+      </div>
+      <p class="small muted">{% if c.last_order_id %}{{ c.last_order_id }} · {% endif %}History fetched {{ c.fetched_at|date:'d M Y, H:i' }}. Order total is not a verified payment amount.</p>
+    {% endwith %}
+    </div>
+    <div class="line-actions"><button type="button" class="text-button" data-refresh-customer="{% url 'customer_refresh_api' bill.shopify_customer.pk %}">↻ Refresh latest order</button><form method="post" action="{% url 'clear_customer' bill.pk %}">{% csrf_token %}<button class="text-button">Remove selection</button></form></div>
+  </div>
+  {% endif %}
+  <form class="search customer-search" data-customer-search role="search">
+    <span aria-hidden="true">⌕</span><input type="search" name="customer_query" aria-label="Search Shopify customers" placeholder="Name, email, or phone number…" minlength="2" maxlength="120" required autocomplete="off"><button class="secondary small-button">Search Shopify</button>
+  </form>
+  <p class="small" role="status" aria-live="polite" data-customer-status></p>
+  <div class="customer-results" data-customer-results></div>
+  <button type="button" class="secondary small-button" data-more-customers hidden>More results</button>
+  <form method="post" action="{% url 'select_customer' bill.pk %}" data-customer-select hidden>{% csrf_token %}<input type="hidden" name="customer_id"></form>
+  <noscript><p>Enable JavaScript to search Shopify customers. Customer creation and walk-in details work without JavaScript.</p></noscript>
+
+  {% if not bill.shopify_customer %}
+  <details class="customer-create" {% if new_customer_form.errors %}open{% endif %}>
+    <summary>＋ Customer not found? Add a new customer</summary>
+    <p>This creates the profile in Shopify immediately and selects it for this sale.</p>
+    {% if customer_creation.state == 'succeeded' or customer_creation.state == 'resolved' %}<p>A customer creation was already handled for this bill. Search Shopify and select the correct profile above.</p>{% endif %}
+    <form method="post" class="customer-form" data-create-customer>
+      {% csrf_token %}<input type="hidden" name="action" value="create_shopify_customer">
+      {{ new_customer_form.as_p }}
+      <button class="primary" {% if not shopify_configured or customer_creation.state == 'sending' or customer_creation.state == 'review' or customer_creation.state == 'succeeded' or customer_creation.state == 'resolved' %}disabled{% endif %}>Create customer in Shopify</button>
+    </form>
+  </details>
+  {% endif %}
+  <details class="customer-create" {% if form.errors %}open{% endif %}>
+    <summary>{% if bill.shopify_customer %}Sale notes{% else %}Walk-in / local customer details{% endif %}</summary>
+    <form method="post" class="customer-form">{% csrf_token %}
+    {% if bill.shopify_customer %}{{ form.non_field_errors }}<p>{{ form.notes.label_tag }}{{ form.notes }}{{ form.notes.errors }}</p>{% else %}{{ form.as_p }}{% endif %}
+    <button class="secondary">Save customer details</button></form>
+  </details>
+</section>

@@ -1,0 +1,18 @@
+{% load static %}<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ title|default:'Sign in' }} · Karim POS</title><link rel="stylesheet" href="{% static 'pos/app.css' %}"><link rel="stylesheet" href="{% static 'pos/customers.css' %}"></head><body>
+<aside class="sidebar"><a class="brand" href="{% url 'dashboard' %}"><span class="brand-icon">k.</span><span>Karim<span class="brand-sub">SALON & SPA</span></span></a><div class="location"><span class="dot"></span> Reception · Main salon</div>
+<div class="nav-label">WORKSPACE</div><nav>
+<a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}selected{% endif %}"><span>▦</span> Overview</a>
+<form method="post" action="{% url 'new_bill' %}">{% csrf_token %}<button class="nav-button"><span>＋</span> New sale</button></form>
+<a href="{% url 'bills' %}" class="{% if request.resolver_match.url_name == 'bills' or request.resolver_match.url_name == 'bill' %}selected{% endif %}"><span>▤</span> Open bills</a>
+<a href="{% url 'orders' %}" class="{% if request.resolver_match.url_name == 'orders' %}selected{% endif %}"><span>▣</span> Orders & sync</a>
+<div class="nav-label">MANAGE</div>
+<a href="{% url 'staff' %}" class="{% if request.resolver_match.url_name == 'staff' %}selected{% endif %}"><span>♧</span> Staff</a>
+<a href="{% url 'catalog' %}" class="{% if request.resolver_match.url_name == 'catalog' %}selected{% endif %}"><span>✂</span> Services & catalog</a>
+<a href="{% url 'reports' %}" class="{% if request.resolver_match.url_name == 'reports' %}selected{% endif %}"><span>▥</span> Reports</a>
+<a href="{% url 'settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}selected{% endif %}"><span>⚙</span> Settings</a></nav>
+<div class="sidebar-bottom"><div class="connection"><span class="dot {% if not shopify_configured %}amber{% endif %}"></span> Shopify {% if shopify_configured %}configured{% else %}not connected{% endif %}</div><div class="user"><span class="avatar">{{ user.username|first|upper|default:'K' }}</span><div><b>{{ user.first_name|default:user.username|default:'Welcome' }}</b><small>Reception workspace</small></div></div>{% if user.is_authenticated %}<form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="text-button">Sign out ↗</button></form>{% endif %}</div></aside>
+<main><div class="topbar"><span>Karim POS <span class="muted">/ &nbsp; {{ title|default:'Sign in' }}</span></span><span class="pill">{% if demo_mode %}LOCAL DEMO{% else %}LOCAL WORKSPACE{% endif %}</span></div><div class="page"><header><div><div class="eyebrow">KARIM SALON & SPA</div><h1>{{ title|default:'Welcome back' }}</h1><p>{{ subtitle }}</p></div>{% block actions %}{% endblock %}</header>
+{% if demo_mode %}<div class="notice demo"><span>◉</span><div><strong>Demo workspace</strong> · Sample catalog and local payments. Demo orders are never sent to Shopify.</div></div>{% endif %}
+{% for message in messages %}<div role="status" class="notice {{ message.tags }}">{{ message }}</div>{% endfor %}
+{% block content %}{% endblock %}
+<footer>Karim POS <span>Made for your daily rhythm.</span></footer></div></main><script src="{% static 'pos/app.js' %}" defer></script></body></html>

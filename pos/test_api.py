@@ -21,8 +21,12 @@ class SvelteApiTests(TestCase):
     def test_svelte_shell_and_assets_are_served(self):
         response = self.client.get('/app/')
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Cache-Control'], 'no-cache, no-store, must-revalidate')
         html = b''.join(response.streaming_content).decode()
         self.assertIn('/app/_app/', html)
+        nested = self.client.get('/app/sales/123')
+        self.assertEqual(nested.status_code, 200)
+        self.assertIn('/app/_app/', b''.join(nested.streaming_content).decode())
         self.assertEqual(self.client.get('/app/_app/version.json').status_code, 200)
 
     def test_session_login_and_protected_api(self):

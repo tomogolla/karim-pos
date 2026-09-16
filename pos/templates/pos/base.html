@@ -1,5 +1,5 @@
-{% load static %}<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ title|default:'Sign in' }} · Karim POS</title><link rel="stylesheet" href="{% static 'pos/app.css' %}"><link rel="stylesheet" href="{% static 'pos/customers.css' %}"></head><body>
-<aside class="sidebar"><a class="brand" href="{% url 'dashboard' %}"><span class="brand-icon">k.</span><span>Karim<span class="brand-sub">SALON & SPA</span></span></a><div class="location"><span class="dot"></span> Reception · Main salon</div>
+{% load static %}<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ title|default:'Sign in' }} · Karim POS</title><link rel="stylesheet" href="{% static 'pos/app.css' %}"></head><body>
+<aside class="sidebar"><a class="brand" href="{% url 'dashboard' %}"><span class="brand-icon">k</span><span>Karim<span class="brand-sub">SALON & SPA</span></span></a><div class="location"><span class="dot"></span> Reception · Hurlingham salon</div>
 <div class="nav-label">WORKSPACE</div><nav>
 <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}selected{% endif %}"><span>▦</span> Overview</a>
 <form method="post" action="{% url 'new_bill' %}">{% csrf_token %}<button class="nav-button"><span>＋</span> New sale</button></form>
@@ -15,4 +15,4 @@
 {% if demo_mode %}<div class="notice demo"><span>◉</span><div><strong>Demo workspace</strong> · Sample catalog and local payments. Demo orders are never sent to Shopify.</div></div>{% endif %}
 {% for message in messages %}<div role="status" class="notice {{ message.tags }}">{{ message }}</div>{% endfor %}
 {% block content %}{% endblock %}
-<footer>Karim POS <span>Made for your daily rhythm.</span></footer></div></main><script src="{% static 'pos/app.js' %}" defer></script></body></html>
+<footer>Karim POS <span></span></footer></div></main><script src="{% static 'pos/app.js' %}" defer></script></body></html>

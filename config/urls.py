@@ -9,7 +9,11 @@ def svelte_app(request, path=''):
     index = settings.BASE_DIR / 'pos' / 'static' / 'frontend' / 'index.html'
     if not index.exists():
         return HttpResponse('Build the SvelteKit frontend with pnpm build.', status=503)
-    return FileResponse(index.open('rb'), content_type='text/html')
+    response = FileResponse(index.open('rb'), content_type='text/html')
+    # The compiled assets are content-hashed and cacheable, but the shell must
+    # always point browsers at the latest build after a frontend deployment.
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return response
 
 urlpatterns = [
     path('admin/', admin.site.urls),

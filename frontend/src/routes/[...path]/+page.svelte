@@ -108,7 +108,9 @@
 
   async function createBill() {
     const bill = await act(() => api.post('/bills/'));
-    if (bill) await goto(`/app/sales/${bill.id}`);
+    // Use a full navigation after creating a bill. Django serves every nested
+    // Svelte route, so this also recovers cleanly from an older cached shell.
+    if (bill) window.location.assign(`/app/sales/${bill.id}`);
   }
 
   async function saveBill() {

@@ -197,7 +197,7 @@
 {:else if !session.authenticated}
   <main class="login-page">
     <section class="login-card">
-      <div class="brand-lockup"><span class="brand-mark">K</span><div><strong>Karim</strong><small>SALON & SPA</small></div></div>
+      <div class="brand-lockup"><img class="brand-logo" src="/static/pos/karimlogo.svg" alt="Karim Salon & Spa" /><div><strong>Karim</strong><small>SALON & SPA</small></div></div>
       <div class="login-copy"><span class="eyebrow">RECEPTION WORKSPACE</span><h1>Welcome back.</h1><p>Sign in to manage today’s sales, clients, and Shopify orders.</p></div>
       {#if error}<div class="alert error">{error}</div>{/if}
       <form on:submit|preventDefault={() => signIn(false)}>
@@ -213,8 +213,8 @@
 {:else}
   <div class="app-shell">
     <aside class="sidebar">
-      <a class="brand-lockup" href="/app/"><span class="brand-mark">K</span><div><strong>Karim</strong><small>SALON & SPA</small></div></a>
-      <div class="location"><span class:online={session.config.shopifyConfigured}></span>Downtown salon</div>
+      <a class="brand-lockup" href="/app/"><img class="brand-logo" src="/static/pos/karimlogo.svg" alt="Karim Salon & Spa" /><div><strong>Karim</strong><small>SALON & SPA</small></div></a>
+      <div class="location"><span class:online={session.config.shopifyConfigured}></span>Hurlingham Plaza</div>
       <nav>
         <span class="nav-label">RECEPTION</span>
         <a class:active={route === 'dashboard'} href="/app/"><i>⌂</i>Overview</a>
@@ -311,7 +311,7 @@
         {:else if route === 'settings' && data}
           <header><div><span class="eyebrow">CONFIGURATION</span><h1>Settings</h1><p>Connection and local workspace status.</p></div></header><div class="settings-grid"><section class="card"><div class="section-head"><h2>Shopify connection</h2><span class="badge" class:paid={data.shopifyConfigured}>{data.shopifyConfigured ? 'Configured' : 'Not connected'}</span></div><dl><div><dt>Store</dt><dd>{data.store || 'Not configured'}</dd></div><div><dt>Admin API</dt><dd>{data.apiVersion}</dd></div><div><dt>Live order sync</dt><dd>{data.liveSync ? 'Enabled' : 'Disabled'}</dd></div><div><dt>Inventory behavior</dt><dd>{data.inventoryBehaviour}</dd></div></dl></section><section class="card"><h2>Local workspace</h2><dl><div><dt>Currency</dt><dd>{data.currency}</dd></div><div><dt>Mode</dt><dd>{data.demoMode ? 'Demo' : 'Production'}</dd></div></dl><div class="soft-alert">Credentials stay in the server’s local environment file and are never returned to this browser.</div></section></div>
         {/if}
-        <footer class="page-foot"><span>Karim POS</span><span>Made for the rhythm of reception.</span></footer>
+        <footer class="page-foot"><span>Karim POS</span><span>***</span></footer>
       </div>
     </main>
   </div>

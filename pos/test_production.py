@@ -17,7 +17,7 @@ PRODUCTION_ENV = {
     'DJANGO_ALLOWED_HOSTS': os.environ.get('DJANGO_ALLOWED_HOSTS', 'pos.example.com'),
     'DJANGO_CSRF_TRUSTED_ORIGINS': os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', 'https://pos.example.com'),
     'DJANGO_DB_NAME': os.environ.get('DJANGO_DB_NAME', 'pos'),
-    'SHOPIFY_STORE': os.environ.get('SHOPIFY_STORE', 'https://example.com/store'),
+    'SHOPIFY_STORE': os.environ.get('SHOPIFY_STORE', 'example.myshopify.com'),
 }
 
 

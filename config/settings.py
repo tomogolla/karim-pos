@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import timedelta
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.utils import get_random_secret_key
@@ -43,8 +44,10 @@ if not DEBUG:
         raise ImproperlyConfigured('Set DJANGO_CSRF_TRUSTED_ORIGINS (comma-separated, e.g. https://pos.example.com) in production.')
     if any(not origin.startswith('https://') for origin in CSRF_TRUSTED_ORIGINS):
         raise ImproperlyConfigured('Every DJANGO_CSRF_TRUSTED_ORIGINS entry must start with https://.')
-INSTALLED_APPS = ['django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles', 'pos']
-MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware']
+INSTALLED_APPS = ['django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles', 'axes', 'pos']
+# AxesMiddleware must stay last so it can replace the response of a locked-out login.
+MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware', 'axes.middleware.AxesMiddleware']
+AUTHENTICATION_BACKENDS = ['axes.backends.AxesStandaloneBackend', 'django.contrib.auth.backends.ModelBackend']
 ROOT_URLCONF = 'config.urls'
 ADMIN_URL = env('DJANGO_ADMIN_URL', 'admin/').strip('/') + '/'
 if ADMIN_URL == '/': raise ImproperlyConfigured('DJANGO_ADMIN_URL cannot be empty.')
@@ -105,6 +108,14 @@ SECURE_SSL_REDIRECT = not DEBUG and env_flag('DJANGO_SECURE_SSL_REDIRECT')
 SECURE_HSTS_SECONDS = 0 if DEBUG else env_int('DJANGO_SECURE_HSTS_SECONDS', 0)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = env_flag('DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS')
 
+# Login brute-force protection: lock a username + IP pair after repeated failures.
+AXES_FAILURE_LIMIT = env_int('AXES_FAILURE_LIMIT', 5)
+AXES_COOLOFF_TIME = timedelta(minutes=env_int('AXES_COOLOFF_MINUTES', 30))
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
+AXES_RESET_ON_SUCCESS = True
+AXES_CLIENT_IP_CALLABLE = 'config.security.client_ip'
+AXES_LOCKOUT_CALLABLE = 'config.security.lockout_response'
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -112,7 +123,9 @@ LOGGING = {
     'formatters': {'plain': {'format': '{asctime} {levelname} {name}: {message}', 'style': '{'}},
     'handlers': {'console': {'class': 'logging.StreamHandler', 'formatter': 'plain', 'filters': ['redact']}},
     'root': {'handlers': ['console'], 'level': env('DJANGO_LOG_LEVEL', 'INFO')},
-    'loggers': {'django': {'handlers': ['console'], 'level': env('DJANGO_LOG_LEVEL', 'INFO'), 'propagate': False}},
+    'loggers': {'django': {'handlers': ['console'], 'level': env('DJANGO_LOG_LEVEL', 'INFO'), 'propagate': False},
+                # Axes logs failed logins and lockouts as warnings; its info lines are routine noise.
+                'axes': {'level': 'WARNING'}},
 }
 
 POS_CURRENCY = os.getenv('POS_CURRENCY', 'KES')

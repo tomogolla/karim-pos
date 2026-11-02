@@ -57,8 +57,7 @@
     </aside>
     <main>
         <div class="topbar"><span>Karim POS <span class="muted">/ &nbsp; {{ title|default:'Sign in'
-                    }}</span></span><span class="pill">{% if demo_mode %}LOCAL DEMO{% else %}LOCAL WORKSPACE{% endif
-                %}</span></div>
+                    }}</span></span><span class="pill">LOCAL WORKSPACE</span></div>
         <div class="page">
             <header>
                 <div>
@@ -67,10 +66,6 @@
                     <p>{{ subtitle }}</p>
                 </div>{% block actions %}{% endblock %}
             </header>
-            {% if demo_mode %}<div class="notice demo"><span>◉</span>
-                <div><strong>Demo workspace</strong> · Sample catalog and local payments. Demo orders are never sent to
-                    Shopify.</div>
-            </div>{% endif %}
             {% for message in messages %}<div role="status" class="notice {{ message.tags }}">{{ message }}</div>{%
             endfor %}
             {% block content %}{% endblock %}

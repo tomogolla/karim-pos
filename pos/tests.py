@@ -1,6 +1,9 @@
 from decimal import Decimal
+from io import StringIO
 from unittest.mock import patch
 from django.contrib.auth.models import User
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from .models import Bill, Line, Product, Staff, Payment, SyncJob
@@ -88,10 +91,16 @@ class SaleTests(TestCase):
         self.assertEqual(self.client.post(reverse('new_bill')).status_code,302)
         self.client.force_login(self.user)
         self.assertEqual(self.client.get(reverse('new_bill')).status_code,405)
-    @override_settings(DEMO_MODE=False)
-    def test_demo_login_disabled_in_production(self):
+    def test_demo_login_routes_removed(self):
         self.client.logout()
-        self.assertEqual(self.client.post(reverse('demo_login')).status_code,403)
+        self.assertEqual(self.client.post('/demo-login/').status_code,404)
+        self.assertEqual(self.client.post('/api/session/demo/').status_code,404)
+        self.assertNotIn('demoMode',self.client.get('/api/session/').json()['config'])
+    def test_seed_demo_requires_debug(self):
+        with self.assertRaises(CommandError): call_command('seed_demo',stdout=StringIO())
+        self.assertFalse(Product.objects.filter(demo=True).exists())
+        with override_settings(DEBUG=True): call_command('seed_demo',stdout=StringIO())
+        self.assertEqual(Product.objects.filter(demo=True).count(),8)
     @override_settings(SHOPIFY_LIVE_SYNC=True,SHOPIFY_ACCESS_TOKEN='test-token')
     @patch('pos.shopify.graphql')
     def test_sync_sends_once(self,api):

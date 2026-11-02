@@ -92,8 +92,8 @@
     } finally { working = false; }
   }
 
-  async function signIn(demo = false) {
-    const result = await act(() => demo ? api.post('/session/demo/') : api.post('/session/login/', loginForm));
+  async function signIn() {
+    const result = await act(() => api.post('/session/login/', loginForm));
     if (result) {
       session = await api.get('/session/');
       loadedRoute = '';
@@ -200,12 +200,11 @@
       <div class="brand-lockup"><img class="brand-logo" src="/static/pos/karimlogo.svg" alt="Karim Salon & Spa" /><div><strong>Karim</strong><small>SALON & SPA</small></div></div>
       <div class="login-copy"><span class="eyebrow">RECEPTION WORKSPACE</span><h1>Welcome back.</h1><p>Sign in to manage today’s sales, clients, and Shopify orders.</p></div>
       {#if error}<div class="alert error">{error}</div>{/if}
-      <form on:submit|preventDefault={() => signIn(false)}>
+      <form on:submit|preventDefault={signIn}>
         <label>Username<input bind:value={loginForm.username} autocomplete="username" required /></label>
         <label>Password<input type="password" bind:value={loginForm.password} autocomplete="current-password" required /></label>
         <button class="primary wide" disabled={working}>{working ? 'Signing in…' : 'Sign in'}</button>
       </form>
-      {#if session.config?.demoMode}<div class="divider"><span>OR</span></div><button class="secondary wide" on:click={() => signIn(true)} disabled={working}>Explore the local demo</button>{/if}
       <p class="login-foot">Private on-premises workspace · Nairobi</p>
     </section>
     <aside class="login-art"><span class="eyebrow">KARIM EXPERIENCE</span><blockquote>“Every visit begins with a warm welcome.”</blockquote><div class="art-orbit">✦</div></aside>
@@ -234,9 +233,8 @@
       </div>
     </aside>
     <main class="workspace">
-      <div class="topbar"><span>Karim POS <b>/</b> {title}</span><span class="mode">{session.config.demoMode ? 'LOCAL DEMO' : 'LOCAL WORKSPACE'}</span></div>
+      <div class="topbar"><span>Karim POS <b>/</b> {title}</span><span class="mode">LOCAL WORKSPACE</span></div>
       <div class="page">
-        {#if session.config.demoMode}<div class="demo-banner">● Demo workspace <span>Sample catalog and local payments. Demo orders never sync to Shopify.</span></div>{/if}
         {#if error}<div class="alert error"><span>{error}</span><button on:click={() => error = ''}>×</button></div>{/if}
         {#if notice}<div class="alert success"><span>{notice}</span><button on:click={() => notice = ''}>×</button></div>{/if}
         {#if loading}<div class="loading-line"></div>{/if}
@@ -309,7 +307,7 @@
           <header><div><span class="eyebrow">TODAY</span><h1>Daily operations report</h1><p>Revenue, category contribution, and audit activity.</p></div><a class="secondary" href="/reports/export/">Export CSV</a></header><section class="stats three"><article><span>GROSS REVENUE</span><strong>{cash(data.revenue)}</strong><small>{data.completed} completed sales</small></article><article><span>COMPLETED SALES</span><strong>{data.completed}</strong><small>Payments recorded today</small></article><article><span>SHOPIFY QUEUE</span><strong>{data.pendingSync}</strong><small>Orders awaiting resolution</small></article></section><div class="report-grid"><section class="card"><h2>Revenue by category</h2>{#each data.categories as item}<div class="report-row"><span>{item.name}</span><b>{cash(item.amount)}</b></div>{:else}<div class="empty"><p>No paid sales today.</p></div>{/each}</section><section class="card"><h2>Recent audit activity</h2>{#each data.events as event}<div class="audit-row"><span></span><div><b>{event.event}</b><small>{event.bill} · {event.actor} · {when(event.createdAt)}</small></div></div>{/each}</section></div>
 
         {:else if route === 'settings' && data}
-          <header><div><span class="eyebrow">CONFIGURATION</span><h1>Settings</h1><p>Connection and local workspace status.</p></div></header><div class="settings-grid"><section class="card"><div class="section-head"><h2>Shopify connection</h2><span class="badge" class:paid={data.shopifyConfigured}>{data.shopifyConfigured ? 'Configured' : 'Not connected'}</span></div><dl><div><dt>Store</dt><dd>{data.store || 'Not configured'}</dd></div><div><dt>Admin API</dt><dd>{data.apiVersion}</dd></div><div><dt>Live order sync</dt><dd>{data.liveSync ? 'Enabled' : 'Disabled'}</dd></div><div><dt>Inventory behavior</dt><dd>{data.inventoryBehaviour}</dd></div></dl></section><section class="card"><h2>Local workspace</h2><dl><div><dt>Currency</dt><dd>{data.currency}</dd></div><div><dt>Mode</dt><dd>{data.demoMode ? 'Demo' : 'Production'}</dd></div></dl><div class="soft-alert">Credentials stay in the server’s local environment file and are never returned to this browser.</div></section></div>
+          <header><div><span class="eyebrow">CONFIGURATION</span><h1>Settings</h1><p>Connection and local workspace status.</p></div></header><div class="settings-grid"><section class="card"><div class="section-head"><h2>Shopify connection</h2><span class="badge" class:paid={data.shopifyConfigured}>{data.shopifyConfigured ? 'Configured' : 'Not connected'}</span></div><dl><div><dt>Store</dt><dd>{data.store || 'Not configured'}</dd></div><div><dt>Admin API</dt><dd>{data.apiVersion}</dd></div><div><dt>Live order sync</dt><dd>{data.liveSync ? 'Enabled' : 'Disabled'}</dd></div><div><dt>Inventory behavior</dt><dd>{data.inventoryBehaviour}</dd></div></dl></section><section class="card"><h2>Local workspace</h2><dl><div><dt>Currency</dt><dd>{data.currency}</dd></div></dl><div class="soft-alert">Credentials stay in the server’s local environment file and are never returned to this browser.</div></section></div>
         {/if}
         <footer class="page-foot"><span>Karim POS</span><span>***</span></footer>
       </div>

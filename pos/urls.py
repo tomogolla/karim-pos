@@ -9,7 +9,7 @@ urlpatterns = [
     path('bills/<int:pk>/customer/clear/', views.clear_customer, name='clear_customer'),
     path('',views.dashboard,name='dashboard'),
     path('login/',LoginView.as_view(template_name='pos/login.html'),name='login'),
-    path('logout/',LogoutView.as_view(),name='logout'), path('demo-login/',views.demo_login,name='demo_login'),
+    path('logout/',LogoutView.as_view(),name='logout'),
     path('bills/new/',views.new_bill,name='new_bill'), path('bills/',views.bills,name='bills'),
     path('bills/<int:pk>/',views.bill,name='bill'), path('bills/<int:pk>/add/',views.add_line,name='add_line'),
     path('lines/<int:pk>/',views.update_line,name='update_line'), path('bills/<int:pk>/checkout/',views.checkout,name='checkout'),

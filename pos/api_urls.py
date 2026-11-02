@@ -4,7 +4,6 @@ from . import api, views
 urlpatterns = [
     path('session/', api.session),
     path('session/login/', api.login_api),
-    path('session/demo/', api.demo_login_api),
     path('session/logout/', api.logout_api),
     path('dashboard/', api.dashboard),
     path('bills/', api.bills),

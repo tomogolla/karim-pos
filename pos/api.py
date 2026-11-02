@@ -5,7 +5,6 @@ from functools import wraps
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Q, Sum
 from django.http import JsonResponse
@@ -104,7 +103,7 @@ def session(request):
         'authenticated': request.user.is_authenticated,
         'user': ({'username': request.user.username,
                   'name': request.user.get_full_name() or request.user.username} if request.user.is_authenticated else None),
-        'config': {'currency': settings.POS_CURRENCY, 'demoMode': settings.DEMO_MODE,
+        'config': {'currency': settings.POS_CURRENCY,
                    'shopifyConfigured': bool(settings.SHOPIFY_STORE and settings.SHOPIFY_ACCESS_TOKEN),
                    'liveSync': settings.SHOPIFY_LIVE_SYNC},
     })
@@ -119,18 +118,6 @@ def login_api(request):
     user = authenticate(request, username=data.get('username', ''), password=data.get('password', ''))
     if not user:
         return JsonResponse({'error': 'The username or password is incorrect.'}, status=400)
-    login(request, user)
-    return JsonResponse({'ok': True})
-
-
-@require_POST
-def demo_login_api(request):
-    if not settings.DEMO_MODE or request.META.get('REMOTE_ADDR') not in ('127.0.0.1', '::1'):
-        return JsonResponse({'error': 'Demo access is available only on this computer in demo mode.'}, status=403)
-    user, created = User.objects.get_or_create(username='demo-receptionist', defaults={'first_name': 'Demo receptionist'})
-    if created:
-        user.set_unusable_password()
-        user.save()
     login(request, user)
     return JsonResponse({'ok': True})
 
@@ -361,8 +348,7 @@ def settings_api(request):
     return JsonResponse({'store': settings.SHOPIFY_STORE, 'apiVersion': settings.SHOPIFY_API_VERSION,
                          'currency': settings.POS_CURRENCY, 'liveSync': settings.SHOPIFY_LIVE_SYNC,
                          'shopifyConfigured': bool(settings.SHOPIFY_STORE and settings.SHOPIFY_ACCESS_TOKEN),
-                         'inventoryBehaviour': settings.SHOPIFY_INVENTORY_BEHAVIOUR,
-                         'demoMode': settings.DEMO_MODE})
+                         'inventoryBehaviour': settings.SHOPIFY_INVENTORY_BEHAVIOUR})
 
 
 @require_POST

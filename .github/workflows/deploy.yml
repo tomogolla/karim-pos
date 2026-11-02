@@ -36,11 +36,20 @@ jobs:
       - name: Check migrations
         run: .venv-ci/bin/python manage.py makemigrations --check --dry-run
 
-      - name: Run Django tests and checks
-        run: |
-          set -euo pipefail
-          .venv-ci/bin/python manage.py test
-          .venv-ci/bin/python manage.py check
+      - name: Run core Django tests
+        run: .venv-ci/bin/python manage.py test pos.tests
+
+      - name: Run API tests
+        run: .venv-ci/bin/python manage.py test pos.test_api
+
+      - name: Run Shopify customer tests
+        run: .venv-ci/bin/python manage.py test pos.test_customers
+
+      - name: Run production configuration tests
+        run: .venv-ci/bin/python manage.py test pos.test_production
+
+      - name: Run Django system checks
+        run: .venv-ci/bin/python manage.py check
 
       - name: Validate the Svelte frontend and committed build
         run: |

@@ -1,8 +1,9 @@
-"""Hooks used by django-axes for client IP detection and lockout responses."""
+"""Hooks for django-axes (client IP, lockout response) and the CSRF failure view."""
 import ipaddress
 
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
+from django.views import csrf
 
 
 def client_ip(request):
@@ -32,3 +33,10 @@ def lockout_response(request, original_response=None, credentials=None):
         response = HttpResponse(message, status=429, content_type='text/plain; charset=utf-8')
     response['Retry-After'] = str(seconds)
     return response
+
+
+def csrf_failure(request, reason=''):
+    """JSON for the SvelteKit API so the client can refresh its token and retry; Django's page elsewhere."""
+    if request.path.startswith('/api/'):
+        return JsonResponse({'error': 'Your security token expired. Reload the page and try again.', 'csrf': True}, status=403)
+    return csrf.csrf_failure(request, reason)

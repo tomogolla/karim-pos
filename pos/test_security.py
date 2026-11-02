@@ -2,7 +2,7 @@ import json
 
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.test import RequestFactory, TestCase, override_settings
+from django.test import Client, RequestFactory, TestCase, override_settings
 
 from config.security import client_ip
 
@@ -71,3 +71,32 @@ class ClientIpTests(TestCase):
         self.assertEqual(client_ip(self.request('1.2.3.4, 203.0.113.7')), '203.0.113.7')
         self.assertEqual(client_ip(self.request('not-an-ip')), '127.0.0.1')
         self.assertEqual(client_ip(self.request()), '127.0.0.1')
+
+
+class CsrfTests(TestCase):
+    def test_api_csrf_failure_is_json_and_fresh_token_works(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(User.objects.create_user('reception', password='correct-horse-battery'))
+        rejected = client.post('/api/bills/', data='{}', content_type='application/json', HTTP_X_CSRFTOKEN='stale')
+        self.assertEqual(rejected.status_code, 403)
+        self.assertTrue(rejected.json()['csrf'])
+        # What the SvelteKit client does next: GET /api/session/, then retry with the cookie value.
+        client.get('/api/session/')
+        token = client.cookies['csrftoken'].value
+        retried = client.post('/api/bills/', data='{}', content_type='application/json', HTTP_X_CSRFTOKEN=token)
+        self.assertEqual(retried.status_code, 201)
+
+    def test_non_api_csrf_failure_keeps_django_page(self):
+        response = Client(enforce_csrf_checks=True).post('/login/', {'username': 'x', 'password': 'y'})
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response['Content-Type'], 'text/html; charset=utf-8')
+
+    def test_cookie_flags(self):
+        self.assertFalse(settings.CSRF_COOKIE_HTTPONLY)
+        self.assertTrue(settings.SESSION_COOKIE_HTTPONLY)
+        User.objects.create_user('reception', password='correct-horse-battery')
+        response = self.client.post('/api/session/login/', data=json.dumps(
+            {'username': 'reception', 'password': 'correct-horse-battery'}), content_type='application/json')
+        self.assertTrue(response.cookies[settings.SESSION_COOKIE_NAME]['httponly'])
+        self.assertEqual(response.cookies[settings.SESSION_COOKIE_NAME]['samesite'], 'Lax')
+        self.assertFalse(response.cookies['csrftoken']['httponly'])

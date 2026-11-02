@@ -22,7 +22,18 @@ MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.contrib.s
 ROOT_URLCONF = 'config.urls'
 TEMPLATES = [{'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [], 'APP_DIRS': True, 'OPTIONS': {'context_processors': ['django.template.context_processors.request', 'django.contrib.auth.context_processors.auth', 'django.contrib.messages.context_processors.messages', 'pos.context.common']}}]
 WSGI_APPLICATION = 'config.wsgi.application'
-DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3', 'OPTIONS': {'timeout': 20}}}
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DJANGO_DB_NAME'),       # The name of the database you created
+        'USER': os.getenv('DJANGO_DB_USER'),                  # Your database user
+        'PASSWORD': os.getenv('DJANGO_DB_PASSWORD'),   # Your database password
+        'HOST': os.getenv('DJANGO_DB_HOST', 'localhost'),                # Use '127.0.0.1' or your Droplet IP if remote
+        'PORT': os.getenv('DJANGO_DB_PORT', '5432'),                     # Default PostgreSQL port
+    }
+}
+
 AUTH_PASSWORD_VALIDATORS = [{'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'}, {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'}]
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = os.getenv('POS_TIME_ZONE', 'Africa/Nairobi')

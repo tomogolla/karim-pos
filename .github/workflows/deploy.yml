@@ -20,15 +20,25 @@ jobs:
       DJANGO_DEBUG: "1"
     steps:
       - name: Check out the commit
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install and test the Django application
+      - name: Verify Python version
         run: |
           set -euo pipefail
           test "$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')" = "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          set -euo pipefail
           python3 -m venv .venv-ci
           .venv-ci/bin/python -m pip install --disable-pip-version-check -r requirements.txt
-          .venv-ci/bin/python manage.py makemigrations --check --dry-run
+
+      - name: Check migrations
+        run: .venv-ci/bin/python manage.py makemigrations --check --dry-run
+
+      - name: Run Django tests and checks
+        run: |
+          set -euo pipefail
           .venv-ci/bin/python manage.py test
           .venv-ci/bin/python manage.py check
 

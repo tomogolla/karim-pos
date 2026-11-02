@@ -9,7 +9,7 @@
 
 Selected Shopify contact details cannot be overwritten through the local walk-in form. Sale notes remain editable. Removing a selection does not delete the customer from Shopify.
 
-**Customer creation writes immediately**, independently of the completed-order sync switch. With real credentials, `DEMO_MODE` does not simulate customer writes. Browser acceptance tests used a separate database and simulated Shopify service.
+**Customer creation writes immediately**, independently of the completed-order sync switch. There is no simulated mode: with real credentials, customer creation always writes to Shopify. Browser acceptance tests used a separate database and simulated Shopify service.
 
 ## Shared authenticated API
 

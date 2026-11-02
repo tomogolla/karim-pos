@@ -3,12 +3,10 @@ import json
 from decimal import Decimal
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Q, Sum
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
@@ -21,17 +19,6 @@ from .shopify import pull_catalog, send_job
 
 def page(request, template, title, subtitle='', **context):
     return render(request, f'pos/{template}.html', {'title': title, 'subtitle': subtitle, **context})
-
-@require_POST
-def demo_login(request):
-    if not settings.DEMO_MODE or request.META.get('REMOTE_ADDR') not in ('127.0.0.1', '::1'):
-        return HttpResponseForbidden('Demo access is available only on this computer in demo mode.')
-    user, created = User.objects.get_or_create(username='demo-receptionist', defaults={'first_name':'Demo receptionist'})
-    if created:
-        user.set_unusable_password()
-        user.save()
-    login(request, user)
-    return redirect('dashboard')
 
 @login_required
 def dashboard(request):

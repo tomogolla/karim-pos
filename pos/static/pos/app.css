@@ -380,14 +380,6 @@ small {
     align-items: center
 }
 
-.notice.demo {
-    background: #f0f3ed;
-    border-color: #dce5d7;
-    color: #617056;
-    font-size: 11px;
-    padding: 10px 14px
-}
-
 .notice.success {
     color: #28553d;
     border-color: #cfe2d3;

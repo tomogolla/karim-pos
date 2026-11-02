@@ -1,4 +1,7 @@
 .env
+.env.*
+!.env.example
+!.env.development.example
 .venv/
 .local-secret
 *.sqlite3

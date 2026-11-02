@@ -1,5 +1,5 @@
-{% extends 'pos/base.html' %}{% block actions %}<form method="post" action="{% url 'new_bill' %}">{% csrf_token
-    %}<button class="primary">＋ Create new sale</button></form>{% endblock %}{% block content %}
+{% extends 'pos/base.html' %}{% block actions %}<form method="post" action="{% url 'new_bill' %}">{% csrf_token %}
+    <button class="primary">＋ Create new sale</button></form>{% endblock %}{% block content %}
 <div class="date-line"><span><span class="dot"></span> Reception is ready</span><span>{{ today|date:'l, d F Y' }}</span>
 </div>
 <div class="stats">

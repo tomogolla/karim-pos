@@ -1,9 +1,13 @@
+import logging
 from django.contrib import admin
 from django.conf import settings
-from django.http import FileResponse, HttpResponse
+from django.db import DatabaseError, connection
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.urls import path, include, re_path
 from django.views.static import serve
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_GET
 
 def svelte_app(request, path=''):
     index = settings.BASE_DIR / 'pos' / 'static' / 'frontend' / 'index.html'
@@ -15,8 +19,21 @@ def svelte_app(request, path=''):
     response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     return response
 
+@require_GET
+@never_cache
+def healthz(request):
+    # Unauthenticated uptime check: proves the app and database respond, reveals nothing else.
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+    except DatabaseError:
+        logging.getLogger(__name__).exception('Health check database query failed')
+        return JsonResponse({'status': 'unavailable'}, status=503)
+    return JsonResponse({'status': 'ok'})
+
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('healthz', healthz),
+    path(settings.ADMIN_URL, admin.site.urls),
     path('api/', include('pos.api_urls')),
     re_path(r'^app/(?P<path>_app/.*)$', serve,
             {'document_root': settings.BASE_DIR / 'pos' / 'static' / 'frontend'}),

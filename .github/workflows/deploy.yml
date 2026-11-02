@@ -1,0 +1,71 @@
+name: Test and deploy
+
+on:
+  push:
+    branches: [prod-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: karim-pos-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      DJANGO_DEBUG: "1"
+    steps:
+      - name: Check out the commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install and test the Django application
+        run: |
+          set -euo pipefail
+          test "$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')" = "3.12"
+          python3 -m venv .venv-ci
+          .venv-ci/bin/python -m pip install --disable-pip-version-check -r requirements.txt
+          .venv-ci/bin/python manage.py makemigrations --check --dry-run
+          .venv-ci/bin/python manage.py test
+          .venv-ci/bin/python manage.py check
+
+      - name: Validate the Svelte frontend and committed build
+        run: |
+          set -euo pipefail
+          corepack enable
+          corepack prepare pnpm@10.18.3 --activate
+          pnpm --dir frontend install --frozen-lockfile
+          pnpm --dir frontend check
+          pnpm --dir frontend build
+          git diff --exit-code -- pos/static/frontend
+
+  deploy:
+    if: vars.DEPLOY_ENABLED == 'true'
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Configure deployment SSH key
+        env:
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+
+      - name: Deploy the tested commit
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes karimpos@"$DEPLOY_HOST" \
+            "set -eu; git -C /srv/karim-pos/app fetch --prune origin prod-hardening; git -C /srv/karim-pos/app checkout --detach '$RELEASE_SHA'; exec /srv/karim-pos/app/deploy/deploy.sh '$RELEASE_SHA'"

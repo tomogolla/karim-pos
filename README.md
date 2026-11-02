@@ -156,14 +156,17 @@ Security behaviour with debug off: session and CSRF cookies are `Secure`; the se
 
 ## Deployment notes
 
-Server setup, nginx and systemd configuration are a separate step. This is what that step must provide.
+The repository now includes a DigitalOcean deployment with GitHub Actions,
+systemd, nginx, exact-commit releases, a database-aware health check and
+application rollback. Follow [docs/DIGITALOCEAN_DEPLOYMENT.md](docs/DIGITALOCEAN_DEPLOYMENT.md)
+for the initial server setup and GitHub secret configuration.
 
 **Application**
 
 1. Python 3.12+, a virtualenv, and `pip install -r requirements.txt`.
 2. A PostgreSQL database and user, and a production `.env` (from `.env.example`) owned by the app user with `chmod 600`.
 3. `python manage.py migrate` (this also creates the login-lockout tables), `python manage.py collectstatic --noinput`, and `python manage.py createsuperuser`.
-4. Run `gunicorn config.wsgi:application -c gunicorn.conf.py` from the project directory, under systemd. [gunicorn.conf.py](gunicorn.conf.py) binds to `127.0.0.1:$GUNICORN_PORT` only (default 8765) with 3 workers and a 60-second timeout. It is never exposed publicly.
+4. Run `gunicorn config.wsgi:application -c gunicorn.conf.py` from the project directory, under systemd. [gunicorn.conf.py](gunicorn.conf.py) binds to `127.0.0.1:$GUNICORN_PORT` only (default 8765). The production template uses one worker because the current 1 GB droplet also runs PostgreSQL and another application. It is never exposed publicly.
 5. After a deploy, check `https://pos.example.com/healthz`. It returns `{"status": "ok"}` when the app and database respond, and `503 {"status": "unavailable"}` otherwise. From the server itself, send the right Host header: `curl -H "Host: pos.example.com" http://127.0.0.1:8765/healthz`.
 
 **What nginx must provide** (on the `pos.example.com` server block)

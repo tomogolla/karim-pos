@@ -5,7 +5,7 @@ Run with: gunicorn config.wsgi:application -c gunicorn.conf.py
 import os
 
 bind = f"127.0.0.1:{os.getenv('GUNICORN_PORT', '8765')}"
-workers = 3
+workers = int(os.getenv('GUNICORN_WORKERS', '2'))
 timeout = 60
 accesslog = '-'
 errorlog = '-'

@@ -1,0 +1,18 @@
+[Unit]
+Description=Send pending Karim POS orders to Shopify once
+After=network-online.target postgresql.service karim-pos.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=karimpos
+Group=karimpos
+WorkingDirectory=/srv/karim-pos/current
+EnvironmentFile=/srv/karim-pos/shared/.env
+ExecStart=/srv/karim-pos/current/venv/bin/python manage.py sync_shopify
+UMask=0027
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/karim-pos/shared

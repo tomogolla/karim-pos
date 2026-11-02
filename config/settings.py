@@ -49,7 +49,7 @@ INSTALLED_APPS = ['django.contrib.admin', 'django.contrib.auth', 'django.contrib
 MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware', 'axes.middleware.AxesMiddleware']
 AUTHENTICATION_BACKENDS = ['axes.backends.AxesStandaloneBackend', 'django.contrib.auth.backends.ModelBackend']
 ROOT_URLCONF = 'config.urls'
-ADMIN_URL = env('DJANGO_ADMIN_URL', 'admin/').strip('/') + '/'
+ADMIN_URL = (env('DJANGO_ADMIN_URL') or 'admin/').strip('/') + '/'
 if ADMIN_URL == '/': raise ImproperlyConfigured('DJANGO_ADMIN_URL cannot be empty.')
 TEMPLATES = [{'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [], 'APP_DIRS': True, 'OPTIONS': {'context_processors': ['django.template.context_processors.request', 'django.contrib.auth.context_processors.auth', 'django.contrib.messages.context_processors.messages', 'pos.context.common']}}]
 WSGI_APPLICATION = 'config.wsgi.application'

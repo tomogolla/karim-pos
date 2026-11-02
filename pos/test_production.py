@@ -13,11 +13,11 @@ from config.log_redaction import RedactFilter
 PRODUCTION_ENV = {
     'DJANGO_SETTINGS_MODULE': 'config.settings',
     'DJANGO_DEBUG': '0',
-    'DJANGO_SECRET_KEY': 'k' * 60,
-    'DJANGO_ALLOWED_HOSTS': 'pos.example.com',
-    'DJANGO_CSRF_TRUSTED_ORIGINS': 'https://pos.example.com',
-    'DJANGO_DB_NAME': 'karim_pos',
-    'SHOPIFY_STORE': '',
+    'DJANGO_SECRET_KEY': os.environ.get('DJANGO_SECRET_KEY', 'production-secret-key'),
+    'DJANGO_ALLOWED_HOSTS': os.environ.get('DJANGO_ALLOWED_HOSTS', 'pos.example.com'),
+    'DJANGO_CSRF_TRUSTED_ORIGINS': os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', 'https://pos.example.com'),
+    'DJANGO_DB_NAME': os.environ.get('DJANGO_DB_NAME', 'pos'),
+    'SHOPIFY_STORE': os.environ.get('SHOPIFY_STORE', 'https://example.com/store'),
 }
 
 

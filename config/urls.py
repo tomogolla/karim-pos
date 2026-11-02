@@ -16,7 +16,7 @@ def svelte_app(request, path=''):
     return response
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path(settings.ADMIN_URL, admin.site.urls),
     path('api/', include('pos.api_urls')),
     re_path(r'^app/(?P<path>_app/.*)$', serve,
             {'document_root': settings.BASE_DIR / 'pos' / 'static' / 'frontend'}),

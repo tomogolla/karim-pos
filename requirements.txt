@@ -1,5 +1,10 @@
+# Requires Python 3.12+ (Django 6.1). Every package is pinned, including dependencies.
 asgiref==3.12.1
 Django==6.1.1
 django-axes==9.0.0
+gunicorn==26.2.0
+psycopg[binary]==3.3.6
+psycopg-binary==3.3.6
 sqlparse==0.6.0
+typing-extensions==4.16.0; python_version < "3.13"
 tzdata==2026.5

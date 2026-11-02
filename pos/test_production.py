@@ -2,9 +2,11 @@ import logging
 import os
 import subprocess
 import sys
+from unittest.mock import patch
 
 from django.conf import settings
-from django.test import SimpleTestCase, override_settings
+from django.db import DatabaseError
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from config.log_redaction import RedactFilter
 
@@ -80,3 +82,18 @@ class LogRedactionTests(SimpleTestCase):
     def test_ordinary_log_lines_are_unchanged(self):
         line = 'Order gid://shopify/Order/5551234567890 synced at 2026-11-02 14:44:01 for KR-00012'
         self.assertEqual(self.render(line), line)
+
+
+class HealthCheckTests(TestCase):
+    def test_healthz_is_public_and_minimal(self):
+        response = self.client.get('/healthz')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'status': 'ok'})
+        self.assertIn('no-cache', response['Cache-Control'])
+
+    def test_healthz_reports_database_failure_without_details(self):
+        with patch('config.urls.connection') as connection, self.assertLogs('config.urls', 'ERROR'):
+            connection.cursor.side_effect = DatabaseError('could not connect to server at db.internal')
+            response = self.client.get('/healthz')
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json(), {'status': 'unavailable'})

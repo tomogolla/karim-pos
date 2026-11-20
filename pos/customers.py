@@ -6,7 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from .models import Customer, CustomerCreation, Bill, Audit
-from .shopify import graphql
+from .shopify import credentials_configured, graphql
 
 CUSTOMER_FIELDS = '''
     id firstName lastName displayName
@@ -42,7 +42,7 @@ def store_domain():
     return settings.SHOPIFY_STORE.lower().strip()
 
 def require_connection():
-    if not settings.SHOPIFY_ACCESS_TOKEN or not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com', settings.SHOPIFY_STORE):
+    if not credentials_configured():
         raise ValueError('Connect Shopify in the server settings to search or create customers.')
 
 def search_expression(term):

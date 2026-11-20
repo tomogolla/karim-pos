@@ -21,7 +21,7 @@ python manage.py seed_demo
 python manage.py runserver 127.0.0.1:8765
 ```
 
-Open **http://127.0.0.1:8765/app/** and sign in with the account you created. On later runs, `start.ps1` applies migrations and starts the local server (it sets `DJANGO_DEBUG=1`; it does not install dependencies, rebuild the frontend, or seed data).
+Open **http://127.0.0.1:8765/** and sign in with the account you created. After sign-in, the browser redirects to **/app/**. On later runs, `start.ps1` applies migrations and starts the local server (it sets `DJANGO_DEBUG=1`; it does not install dependencies, rebuild the frontend, or seed data).
 
 - **Database:** with `DJANGO_DEBUG=1` and no `DJANGO_DB_NAME`, the app uses SQLite (`db.sqlite3`). Fill in the `DJANGO_DB_*` values in `.env` to use a local PostgreSQL instead, which is closer to production.
 - **Sample data:** `seed_demo` adds eight sample products/services and six staff members. Sample prices are illustrative KES values, not the client's confirmed price list. The command only runs when `DJANGO_DEBUG=1`. Sample products are flagged as demo items and are always blocked from being sent to Shopify; a real catalog import deactivates them.
@@ -58,12 +58,14 @@ Put credentials in the `.env` file (on the server: the production `.env`). Do no
 
 ```dotenv
 SHOPIFY_STORE=your-store.myshopify.com
-SHOPIFY_ACCESS_TOKEN=your-admin-api-access-token
+SHOPIFY_CLIENT_ID=your-dev-dashboard-client-id
+SHOPIFY_CLIENT_SECRET=your-dev-dashboard-client-secret
+SHOPIFY_ACCESS_TOKEN=
 SHOPIFY_LIVE_SYNC=0
 POS_CURRENCY=KES
 ```
 
-Restart the app after changing configuration. The token must be an Admin API access token; an app client ID/secret alone is not that token. OAuth installation/token refresh is not implemented yet. Use a development store first.
+Restart the app after changing configuration. For a Dev Dashboard app, Karim POS exchanges the client credentials for a 24-hour Admin API token, caches it in memory, and requests a replacement 60 seconds before expiry. A Shopify 401 response discards the cached token and retries once with a new token. No refresh cron job or manual token replacement is required. Client credentials only work when the app and store belong to the same Shopify organization. `SHOPIFY_ACCESS_TOKEN` remains as a fallback for an existing legacy admin-created custom app; leave it blank for a new Dev Dashboard app. Use a development store first.
 
 Catalog queries need product/inventory read access. Order creation needs order write access and appropriate customer-data access for the installed app. Confirm actual scopes and protected customer data permissions during installation; do not grant unrelated scopes simply because they appear as alternatives in schema tooling.
 
@@ -146,7 +148,7 @@ All configuration comes from environment variables, read from the real environme
 | `DJANGO_LOG_LEVEL` | – | Console log level, default `INFO`. |
 | `GUNICORN_PORT` | – | Local port gunicorn listens on, default `8765`. |
 | `POS_CURRENCY`, `POS_TIME_ZONE` | – | Default `KES` and `Africa/Nairobi`. |
-| `SHOPIFY_STORE`, `SHOPIFY_ACCESS_TOKEN`, `SHOPIFY_LIVE_SYNC`, `SHOPIFY_INVENTORY_BEHAVIOUR` | – | Shopify connection (see above). `SHOPIFY_STORE`, when set, must look like `your-store.myshopify.com`. Keep `SHOPIFY_LIVE_SYNC=0` until validation is complete. |
+| `SHOPIFY_STORE`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`, `SHOPIFY_ACCESS_TOKEN`, `SHOPIFY_LIVE_SYNC`, `SHOPIFY_INVENTORY_BEHAVIOUR` | – | Shopify connection (see above). New Dev Dashboard apps use both client credential values and leave the legacy access token blank. `SHOPIFY_STORE`, when set, must look like `your-store.myshopify.com`. Keep `SHOPIFY_LIVE_SYNC=0` until validation is complete. |
 
 Security behaviour with debug off: session and CSRF cookies are `Secure`; the session cookie is `HttpOnly` and `SameSite=Lax`; the CSRF cookie is deliberately readable by JavaScript because the SvelteKit client sends it back in the `X-CSRFToken` header. Sessions last 12 hours. Passwords need at least 12 characters and cannot be numeric-only, common, or similar to the username.
 
@@ -221,6 +223,8 @@ Browser acceptance: create a mixed service/retail bill, save customer and staff 
 
 ## Shopify references
 
+- [Create apps using the Dev Dashboard](https://shopify.dev/docs/apps/build/dev-dashboard/create-apps-using-dev-dashboard)
+- [Authenticate stores in your organization with client credentials](https://shopify.dev/docs/apps/build/authentication-authorization/client-credentials-grant)
 - [orderCreate](https://shopify.dev/docs/api/admin-graphql/latest/mutations/orderCreate)
 - [OrderCreateOrderInput](https://shopify.dev/docs/api/admin-graphql/latest/input-objects/OrderCreateOrderInput)
 - [OrderCreateLineItemInput](https://shopify.dev/docs/api/admin-graphql/latest/input-objects/OrderCreateLineItemInput)

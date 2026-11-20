@@ -55,6 +55,11 @@ class ProductionSettingsTests(SimpleTestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.split(), ['True', 'django.db.backends.sqlite3'])
 
+    def test_shopify_client_credentials_must_be_a_complete_pair(self):
+        result = load_settings(SHOPIFY_CLIENT_ID='client-id', SHOPIFY_CLIENT_SECRET='')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET', result.stderr)
+
 
 class LogRedactionTests(SimpleTestCase):
     def render(self, msg, *args, exc_info=None):
@@ -62,12 +67,14 @@ class LogRedactionTests(SimpleTestCase):
         RedactFilter().filter(record)
         return logging.Formatter('%(message)s').format(record)
 
-    @override_settings(SHOPIFY_ACCESS_TOKEN='configured-access-token-value')
+    @override_settings(SHOPIFY_ACCESS_TOKEN='configured-access-token-value',
+                       SHOPIFY_CLIENT_SECRET='configured-client-secret-value')
     def test_secrets_and_contact_details_are_redacted(self):
         line = self.render('token=%s header %s mail %s phone %s local %s password: %s',
                            'abc123', 'configured-access-token-value', 'amina@example.com',
                            '+254 712 345 678', '0712345678', 'hunter22')
-        for secret in ['abc123', 'configured-access-token-value', 'amina@example.com', '712 345 678', '0712345678', 'hunter22']:
+        for secret in ['abc123', 'configured-access-token-value', 'configured-client-secret-value',
+                       'amina@example.com', '712 345 678', '0712345678', 'hunter22']:
             self.assertNotIn(secret, line)
 
     def test_shopify_token_in_traceback_is_redacted(self):

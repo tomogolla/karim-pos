@@ -81,9 +81,9 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-LOGIN_URL = '/login/'
+LOGIN_URL = '/'
 LOGIN_REDIRECT_URL = '/app/'
-LOGOUT_REDIRECT_URL = '/login/'
+LOGOUT_REDIRECT_URL = '/'
 
 # Cookies. The SvelteKit client reads the csrftoken cookie, so it must not be HttpOnly.
 SESSION_COOKIE_HTTPONLY = True
@@ -131,9 +131,15 @@ LOGGING = {
 
 POS_CURRENCY = os.getenv('POS_CURRENCY', 'KES')
 SHOPIFY_STORE = os.getenv('SHOPIFY_STORE', '')
+SHOPIFY_CLIENT_ID = os.getenv('SHOPIFY_CLIENT_ID', '')
+SHOPIFY_CLIENT_SECRET = os.getenv('SHOPIFY_CLIENT_SECRET', '')
+# Legacy admin-created custom apps can still use their non-expiring token.
+# New Dev Dashboard apps should use the client credentials above instead.
 SHOPIFY_ACCESS_TOKEN = os.getenv('SHOPIFY_ACCESS_TOKEN', '')
 SHOPIFY_API_VERSION = '2026-07'
 SHOPIFY_LIVE_SYNC = os.getenv('SHOPIFY_LIVE_SYNC', '0') == '1'
 SHOPIFY_INVENTORY_BEHAVIOUR = os.getenv('SHOPIFY_INVENTORY_BEHAVIOUR', 'DECREMENT_OBEYING_POLICY')
 if not DEBUG and SHOPIFY_STORE and not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com', SHOPIFY_STORE):
     raise ImproperlyConfigured('SHOPIFY_STORE must be your store.myshopify.com domain (no https://, no path).')
+if bool(SHOPIFY_CLIENT_ID) != bool(SHOPIFY_CLIENT_SECRET):
+    raise ImproperlyConfigured('SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET must be configured together.')

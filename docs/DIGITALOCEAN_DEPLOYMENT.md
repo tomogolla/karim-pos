@@ -93,6 +93,77 @@ secret with `python3 -c "import secrets; print(secrets.token_urlsafe(50))"`.
 
 `GUNICORN_WORKERS=1` is intentional on this shared 1 GB server.
 
+### Configure Shopify automatic token refresh
+
+New Shopify Dev Dashboard apps use a Client ID and Client Secret instead of a
+token copied from the admin. Karim POS exchanges those credentials for a
+24-hour Admin API token, caches it in each running process, and requests a new
+token 60 seconds before expiry. If Shopify rejects a cached token with HTTP
+401, the app obtains a replacement and safely retries that rejected request
+once. No daily cron job, token file, or manual token update is required.
+
+The client-credentials flow only works when the app and store are in the same
+Shopify organization:
+
+1. Open `https://dev.shopify.com/`, select the organization that owns the
+   store, and create an app with **Start from Dev Dashboard**.
+2. Create an app version. For a non-embedded app, the default app URL
+   `https://shopify.dev/apps/default-app-home` is sufficient.
+3. Request only the required Admin API scopes. This integration currently
+   needs product and inventory reads, customer reads and writes, order reads,
+   and order writes: `read_products`, `read_inventory`, `read_customers`,
+   `write_customers`, `read_orders`, and `write_orders`. Shopify customer and
+   order data can also require protected-customer-data approval for the fields
+   used by this app.
+4. Release the version, install the app on the target store, and approve the
+   requested access.
+5. On the app's **Settings** page, copy the Client ID and Client Secret. Do not
+   paste either value into GitHub, application logs, or this repository.
+6. Edit the existing shared environment file on the droplet:
+
+```bash
+sudo nano /srv/karim-pos/shared/.env
+sudo chown karimpos:karimpos /srv/karim-pos/shared/.env
+sudo chmod 600 /srv/karim-pos/shared/.env
+```
+
+Set the Shopify section as follows, using the permanent `*.myshopify.com`
+domain rather than a custom storefront domain:
+
+```dotenv
+SHOPIFY_STORE=your-store.myshopify.com
+SHOPIFY_CLIENT_ID=your-client-id
+SHOPIFY_CLIENT_SECRET=your-client-secret
+SHOPIFY_ACCESS_TOKEN=
+SHOPIFY_LIVE_SYNC=0
+SHOPIFY_INVENTORY_BEHAVIOUR=DECREMENT_OBEYING_POLICY
+```
+
+Both client credential values must be present. `SHOPIFY_ACCESS_TOKEN` is only
+for an existing legacy admin-created custom app and should remain blank for a
+new Dev Dashboard app. Restart both processes after editing the environment:
+
+```bash
+sudo systemctl restart karim-pos.service
+sudo systemctl restart karim-pos-sync.service
+sudo journalctl -u karim-pos.service -n 50 --no-pager
+```
+
+The oneshot sync service might be inactive after a successful run; that is
+normal. Sign in to Karim POS and pull the Shopify catalog while
+`SHOPIFY_LIVE_SYNC=0`. A successful import verifies the store domain,
+credential exchange, granted product scopes, and API connectivity without
+sending an order. Then test customer search and creation on a development
+store. Only enable live order sync after all required permissions and field
+mappings have been validated.
+
+If Shopify returns `shop_not_permitted`, confirm that both the target store and
+app appear under the same organization in the Dev Dashboard. A client store in
+another organization requires an OAuth installation flow instead of this
+client-credentials setup. See Shopify's official
+[Dev Dashboard app guide](https://shopify.dev/docs/apps/build/dev-dashboard/create-apps-using-dev-dashboard)
+and [client-credentials guide](https://shopify.dev/docs/apps/build/authentication-authorization/client-credentials-grant).
+
 ## 5. Create a separate GitHub Actions SSH key
 
 The existing key on the droplet is for **droplet to GitHub** access. CI needs a

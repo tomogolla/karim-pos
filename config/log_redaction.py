@@ -17,7 +17,8 @@ PATTERNS = [
 
 
 def redact(text):
-    secrets = (getattr(settings, 'SHOPIFY_ACCESS_TOKEN', ''), getattr(settings, 'SECRET_KEY', ''),
+    secrets = (getattr(settings, 'SHOPIFY_ACCESS_TOKEN', ''),
+               getattr(settings, 'SHOPIFY_CLIENT_SECRET', ''), getattr(settings, 'SECRET_KEY', ''),
                settings.DATABASES.get('default', {}).get('PASSWORD', ''))
     for value in secrets:
         if value and len(value) >= 8:

@@ -102,14 +102,16 @@ class SaleTests(TestCase):
         self.assertFalse(Product.objects.filter(demo=True).exists())
         with override_settings(DEBUG=True): call_command('seed_demo',stdout=StringIO())
         self.assertEqual(Product.objects.filter(demo=True).count(),8)
-    @override_settings(SHOPIFY_LIVE_SYNC=True,SHOPIFY_ACCESS_TOKEN='test-token')
+    @override_settings(SHOPIFY_LIVE_SYNC=True, SHOPIFY_STORE='test-store.myshopify.com',
+                       SHOPIFY_CLIENT_ID='', SHOPIFY_CLIENT_SECRET='', SHOPIFY_ACCESS_TOKEN='test-token')
     @patch('pos.shopify.graphql')
     def test_sync_sends_once(self,api):
         api.return_value={'orderCreate':{'order':{'id':'gid://shopify/Order/123'},'userErrors':[]}}
         job=self.pay().sync
         self.assertTrue(send_job(job.pk));self.assertFalse(send_job(job.pk))
         self.assertEqual(api.call_count,1)
-    @override_settings(SHOPIFY_LIVE_SYNC=True,SHOPIFY_ACCESS_TOKEN='test-token')
+    @override_settings(SHOPIFY_LIVE_SYNC=True, SHOPIFY_STORE='test-store.myshopify.com',
+                       SHOPIFY_CLIENT_ID='', SHOPIFY_CLIENT_SECRET='', SHOPIFY_ACCESS_TOKEN='test-token')
     @patch('pos.shopify.graphql')
     def test_failed_retry_rebuilds_corrected_payload(self,api):
         job=self.pay().sync
@@ -129,14 +131,16 @@ class SaleTests(TestCase):
         job.refresh_from_db()
         self.assertEqual(job.payload,sent_payload)
         self.assertEqual(job.state,'synced')
-    @override_settings(SHOPIFY_LIVE_SYNC=True,SHOPIFY_ACCESS_TOKEN='test-token')
+    @override_settings(SHOPIFY_LIVE_SYNC=True, SHOPIFY_STORE='test-store.myshopify.com',
+                       SHOPIFY_CLIENT_ID='', SHOPIFY_CLIENT_SECRET='', SHOPIFY_ACCESS_TOKEN='test-token')
     @patch('pos.shopify.graphql',side_effect=TimeoutError)
     def test_ambiguous_sync_is_not_retried(self,api):
         job=self.pay().sync
         self.assertFalse(send_job(job.pk));self.assertFalse(send_job(job.pk))
         job.refresh_from_db();self.assertEqual(job.state,'review')
         self.assertEqual(api.call_count,1)
-    @override_settings(SHOPIFY_LIVE_SYNC=True,SHOPIFY_ACCESS_TOKEN='test-token')
+    @override_settings(SHOPIFY_LIVE_SYNC=True, SHOPIFY_STORE='test-store.myshopify.com',
+                       SHOPIFY_CLIENT_ID='', SHOPIFY_CLIENT_SECRET='', SHOPIFY_ACCESS_TOKEN='test-token')
     @patch('pos.shopify.graphql')
     def test_demo_orders_never_sent(self,api):
         self.product.demo=True;self.product.save()

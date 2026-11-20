@@ -45,6 +45,9 @@ jobs:
       - name: Run Shopify customer tests
         run: .venv-ci/bin/python manage.py test pos.test_customers
 
+      - name: Run Shopify authentication tests
+        run: .venv-ci/bin/python manage.py test pos.test_shopify_auth
+
       - name: Run production configuration tests
         run: .venv-ci/bin/python manage.py test pos.test_production
 

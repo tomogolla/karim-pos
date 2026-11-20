@@ -44,6 +44,10 @@ urlpatterns = [
     path('healthz', healthz),
     path(settings.ADMIN_URL, admin.site.urls),
     path('api/', include('pos.api_urls')),
+    re_path(r'^(?P<path>_app/.*)$', serve,
+            {'document_root': settings.BASE_DIR / 'pos' / 'static' / 'frontend'}),
+    # Keep the previous asset prefix temporarily so a browser holding an older
+    # no-store shell can finish loading during a rolling deployment.
     re_path(r'^app/(?P<path>_app/.*)$', serve,
             {'document_root': settings.BASE_DIR / 'pos' / 'static' / 'frontend'}),
     path('app/', svelte_app, name='svelte_app'),

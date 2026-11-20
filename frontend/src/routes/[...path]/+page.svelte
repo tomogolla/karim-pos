@@ -32,10 +32,6 @@
   async function init() {
     try {
       session = await api.get('/session/');
-      if (!session.authenticated && window.location.pathname !== '/') {
-        window.location.replace('/');
-        return;
-      }
       if (session.authenticated) await loadRoute(route);
     } catch (e) {
       error = e.message;

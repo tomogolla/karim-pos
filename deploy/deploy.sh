@@ -40,6 +40,12 @@ cd "$release"
 "$release/venv/bin/python" manage.py check --deploy
 "$release/venv/bin/python" manage.py migrate --noinput
 "$release/venv/bin/python" manage.py collectstatic --noinput --clear
+health_host="$(DJANGO_SETTINGS_MODULE=config.settings "$release/venv/bin/python" -c \
+    'from django.conf import settings; print(settings.ALLOWED_HOSTS[0])')"
+if [[ ! "$health_host" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
+    echo "The first DJANGO_ALLOWED_HOSTS value is not a valid health-check hostname." >&2
+    exit 2
+fi
 
 previous=""
 if [[ -L "$CURRENT" ]]; then
@@ -67,7 +73,7 @@ trap rollback ERR
 sudo /usr/bin/systemctl restart karim-pos.service
 for attempt in {1..15}; do
     if curl --fail --silent --show-error \
-        -H "Host: $("$release/venv/bin/python" -c 'from django.conf import settings; print(settings.ALLOWED_HOSTS[0])')" \
+        -H "Host: $health_host" \
         "http://127.0.0.1:8765/healthz" >/dev/null; then
         trap - ERR
         echo "Deployed $RELEASE_SHA successfully."

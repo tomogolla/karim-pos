@@ -19,15 +19,31 @@ class SvelteApiTests(TestCase):
         return getattr(self.client, method)(path, data=json.dumps(payload or {}), content_type='application/json')
 
     def test_svelte_shell_and_assets_are_served(self):
+        root = self.client.get('/')
+        self.assertEqual(root.status_code, 200)
+        root_html = b''.join(root.streaming_content).decode()
+        self.assertIn('/_app/', root_html)
+        self.assertNotIn('base: "/app"', root_html)
+        self.client.force_login(self.user)
         response = self.client.get('/app/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Cache-Control'], 'no-cache, no-store, must-revalidate')
         html = b''.join(response.streaming_content).decode()
-        self.assertIn('/app/_app/', html)
+        self.assertIn('/_app/', html)
         nested = self.client.get('/app/sales/123')
         self.assertEqual(nested.status_code, 200)
-        self.assertIn('/app/_app/', b''.join(nested.streaming_content).decode())
+        self.assertIn('/_app/', b''.join(nested.streaming_content).decode())
+        self.assertEqual(self.client.get('/_app/version.json').status_code, 200)
         self.assertEqual(self.client.get('/app/_app/version.json').status_code, 200)
+
+    def test_signed_out_app_redirects_to_root_login(self):
+        response = self.client.get('/app/')
+        self.assertRedirects(response, '/', fetch_redirect_response=False)
+
+    def test_authenticated_root_redirects_to_app(self):
+        self.client.force_login(self.user)
+        response = self.client.get('/')
+        self.assertRedirects(response, '/app/', fetch_redirect_response=False)
 
     def test_session_login_and_protected_api(self):
         self.assertFalse(self.client.get('/api/session/').json()['authenticated'])

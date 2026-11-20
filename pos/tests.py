@@ -72,12 +72,13 @@ class SaleTests(TestCase):
         self.client.post(reverse('checkout',args=[self.bill.pk]),{'method':'cash','tendered':'2800'})
         self.assertFalse(Payment.objects.exists())
     def test_pages_render_with_open_and_paid_orders(self):
-        for name in ['dashboard','bills','catalog','staff','orders','reports','settings']:
+        self.assertRedirects(self.client.get(reverse('dashboard')), '/app/', fetch_redirect_response=False)
+        for name in ['bills','catalog','staff','orders','reports','settings']:
             self.assertEqual(self.client.get(reverse(name)).status_code,200,name)
         for name in ['bill','checkout','receipt']:
             self.assertEqual(self.client.get(reverse(name,args=[self.bill.pk])).status_code,200,name)
         self.pay()
-        for name in ['dashboard','orders','reports','staff','export']:
+        for name in ['orders','reports','staff','export']:
             self.assertEqual(self.client.get(reverse(name)).status_code,200,name)
         self.assertEqual(self.client.get(reverse('payload',args=[self.bill.sync.pk])).status_code,200)
         self.assertEqual(self.client.get(reverse('receipt',args=[self.bill.pk])).status_code,200)
@@ -101,14 +102,16 @@ class SaleTests(TestCase):
         self.assertFalse(Product.objects.filter(demo=True).exists())
         with override_settings(DEBUG=True): call_command('seed_demo',stdout=StringIO())
         self.assertEqual(Product.objects.filter(demo=True).count(),8)
-    @override_settings(SHOPIFY_LIVE_SYNC=True,SHOPIFY_ACCESS_TOKEN='test-token')
+    @override_settings(SHOPIFY_LIVE_SYNC=True, SHOPIFY_STORE='test-store.myshopify.com',
+                       SHOPIFY_CLIENT_ID='', SHOPIFY_CLIENT_SECRET='', SHOPIFY_ACCESS_TOKEN='test-token')
     @patch('pos.shopify.graphql')
     def test_sync_sends_once(self,api):
         api.return_value={'orderCreate':{'order':{'id':'gid://shopify/Order/123'},'userErrors':[]}}
         job=self.pay().sync
         self.assertTrue(send_job(job.pk));self.assertFalse(send_job(job.pk))
         self.assertEqual(api.call_count,1)
-    @override_settings(SHOPIFY_LIVE_SYNC=True,SHOPIFY_ACCESS_TOKEN='test-token')
+    @override_settings(SHOPIFY_LIVE_SYNC=True, SHOPIFY_STORE='test-store.myshopify.com',
+                       SHOPIFY_CLIENT_ID='', SHOPIFY_CLIENT_SECRET='', SHOPIFY_ACCESS_TOKEN='test-token')
     @patch('pos.shopify.graphql')
     def test_failed_retry_rebuilds_corrected_payload(self,api):
         job=self.pay().sync
@@ -128,14 +131,16 @@ class SaleTests(TestCase):
         job.refresh_from_db()
         self.assertEqual(job.payload,sent_payload)
         self.assertEqual(job.state,'synced')
-    @override_settings(SHOPIFY_LIVE_SYNC=True,SHOPIFY_ACCESS_TOKEN='test-token')
+    @override_settings(SHOPIFY_LIVE_SYNC=True, SHOPIFY_STORE='test-store.myshopify.com',
+                       SHOPIFY_CLIENT_ID='', SHOPIFY_CLIENT_SECRET='', SHOPIFY_ACCESS_TOKEN='test-token')
     @patch('pos.shopify.graphql',side_effect=TimeoutError)
     def test_ambiguous_sync_is_not_retried(self,api):
         job=self.pay().sync
         self.assertFalse(send_job(job.pk));self.assertFalse(send_job(job.pk))
         job.refresh_from_db();self.assertEqual(job.state,'review')
         self.assertEqual(api.call_count,1)
-    @override_settings(SHOPIFY_LIVE_SYNC=True,SHOPIFY_ACCESS_TOKEN='test-token')
+    @override_settings(SHOPIFY_LIVE_SYNC=True, SHOPIFY_STORE='test-store.myshopify.com',
+                       SHOPIFY_CLIENT_ID='', SHOPIFY_CLIENT_SECRET='', SHOPIFY_ACCESS_TOKEN='test-token')
     @patch('pos.shopify.graphql')
     def test_demo_orders_never_sent(self,api):
         self.product.demo=True;self.product.save()

@@ -1,6 +1,10 @@
 """Shopify boundary. No payment collection occurs here; payments are recorded externally."""
 import json
 import re
+import threading
+import time
+from urllib.error import HTTPError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from django.conf import settings
 from django.db import transaction
@@ -25,15 +29,111 @@ CREATE_ORDER = '''mutation CreateOrder($order: OrderCreateOrderInput!, $options:
   }
 }'''
 
+TOKEN_REFRESH_MARGIN_SECONDS = 60
+_token_lock = threading.Lock()
+_cached_token = ''
+_cached_token_refresh_at = 0.0
+_cached_token_key = None
+
+
+def credentials_configured():
+    """Return whether a store and one complete supported credential set exist."""
+    store_valid = bool(re.fullmatch(
+        r'[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com', settings.SHOPIFY_STORE
+    ))
+    client_credentials = bool(settings.SHOPIFY_CLIENT_ID and settings.SHOPIFY_CLIENT_SECRET)
+    return store_valid and bool(client_credentials or settings.SHOPIFY_ACCESS_TOKEN)
+
+
+def _client_credentials_key():
+    return (settings.SHOPIFY_STORE, settings.SHOPIFY_CLIENT_ID, settings.SHOPIFY_CLIENT_SECRET)
+
+
+def _reset_token_cache():
+    """Clear the process-local token cache. Primarily useful after a rejected token."""
+    global _cached_token, _cached_token_refresh_at, _cached_token_key
+    with _token_lock:
+        _cached_token = ''
+        _cached_token_refresh_at = 0.0
+        _cached_token_key = None
+
+
+def _discard_rejected_token(token):
+    global _cached_token, _cached_token_refresh_at, _cached_token_key
+    with _token_lock:
+        if _cached_token == token:
+            _cached_token = ''
+            _cached_token_refresh_at = 0.0
+            _cached_token_key = None
+
+
+def _request_access_token():
+    request = Request(
+        f'https://{settings.SHOPIFY_STORE}/admin/oauth/access_token',
+        data=urlencode({
+            'grant_type': 'client_credentials',
+            'client_id': settings.SHOPIFY_CLIENT_ID,
+            'client_secret': settings.SHOPIFY_CLIENT_SECRET,
+        }).encode(),
+        headers={'Content-Type': 'application/x-www-form-urlencoded'},
+        method='POST',
+    )
+    with urlopen(request, timeout=25) as response:
+        result = json.load(response)
+    token = result.get('access_token')
+    try:
+        expires_in = int(result.get('expires_in', 0))
+    except (TypeError, ValueError):
+        expires_in = 0
+    if not token or expires_in <= 0:
+        raise ValueError('Shopify returned an invalid access token response.')
+    return token, expires_in
+
+
+def access_token():
+    """Return a valid token, refreshing Dev Dashboard credentials when needed."""
+    global _cached_token, _cached_token_refresh_at, _cached_token_key
+    if settings.SHOPIFY_CLIENT_ID and settings.SHOPIFY_CLIENT_SECRET:
+        key = _client_credentials_key()
+        now = time.monotonic()
+        if _cached_token and _cached_token_key == key and now < _cached_token_refresh_at:
+            return _cached_token
+        with _token_lock:
+            now = time.monotonic()
+            if _cached_token and _cached_token_key == key and now < _cached_token_refresh_at:
+                return _cached_token
+            token, expires_in = _request_access_token()
+            _cached_token = token
+            _cached_token_key = key
+            _cached_token_refresh_at = now + max(1, expires_in - TOKEN_REFRESH_MARGIN_SECONDS)
+            return token
+    if settings.SHOPIFY_ACCESS_TOKEN:
+        return settings.SHOPIFY_ACCESS_TOKEN
+    raise ValueError('Shopify credentials are not configured.')
+
+
+def _graphql_request(query, variables, token):
+    request = Request(
+        f'https://{settings.SHOPIFY_STORE}/admin/api/{settings.SHOPIFY_API_VERSION}/graphql.json',
+        data=json.dumps({'query': query, 'variables': variables}).encode(),
+        headers={'Content-Type': 'application/json', 'X-Shopify-Access-Token': token},
+    )
+    with urlopen(request, timeout=25) as response:
+        return json.load(response)
+
 def graphql(query, variables):
     if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com', settings.SHOPIFY_STORE):
         raise ValueError('Set SHOPIFY_STORE to your store.myshopify.com domain.')
-    if not settings.SHOPIFY_ACCESS_TOKEN: raise ValueError('Shopify access token is not configured.')
-    req = Request(f'https://{settings.SHOPIFY_STORE}/admin/api/{settings.SHOPIFY_API_VERSION}/graphql.json',
-                  data=json.dumps({'query': query, 'variables': variables}).encode(),
-                  headers={'Content-Type': 'application/json', 'X-Shopify-Access-Token': settings.SHOPIFY_ACCESS_TOKEN})
-    with urlopen(req, timeout=25) as response:
-        result = json.load(response)
+    token = access_token()
+    try:
+        result = _graphql_request(query, variables, token)
+    except HTTPError as exc:
+        # A 401 means Shopify rejected the request before executing GraphQL, so
+        # it is safe to refresh a short-lived token and retry exactly once.
+        if exc.code != 401 or not (settings.SHOPIFY_CLIENT_ID and settings.SHOPIFY_CLIENT_SECRET):
+            raise
+        _discard_rejected_token(token)
+        result = _graphql_request(query, variables, access_token())
     if result.get('errors'): raise ValueError('Shopify returned GraphQL errors. Check app permissions and API compatibility.')
     return result['data']
 
@@ -102,7 +202,7 @@ def build_payload(bill):
 
 def send_job(job_id):
     if not settings.SHOPIFY_LIVE_SYNC: raise ValueError('Live order sync is disabled. Connect and validate your store first.')
-    if not settings.SHOPIFY_ACCESS_TOKEN: raise ValueError('Shopify credentials are not configured.')
+    if not credentials_configured(): raise ValueError('Shopify credentials are not configured.')
     job = SyncJob.objects.select_related('bill').get(pk=job_id)
     if job.bill.lines.filter(product__demo=True).exists(): raise ValueError('Demo orders cannot be sent to Shopify.')
     # Explicit Shopify user errors mean no order was created. Rebuild those

@@ -1,0 +1,25 @@
+[Unit]
+Description=Karim POS Gunicorn application
+Wants=network-online.target
+After=network-online.target postgresql.service
+
+[Service]
+Type=simple
+User=karimpos
+Group=karimpos
+WorkingDirectory=/srv/karim-pos/current
+EnvironmentFile=/srv/karim-pos/shared/.env
+ExecStart=/srv/karim-pos/current/venv/bin/gunicorn config.wsgi:application --config /srv/karim-pos/current/gunicorn.conf.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGQUIT
+UMask=0027
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/karim-pos/shared
+
+[Install]
+WantedBy=multi-user.target

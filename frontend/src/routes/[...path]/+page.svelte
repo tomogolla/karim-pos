@@ -95,15 +95,12 @@
   async function signIn() {
     const result = await act(() => api.post('/session/login/', loginForm));
     if (result) {
-      session = await api.get('/session/');
-      loadedRoute = '';
-      await goto('/app/');
+      window.location.assign('/app/');
     }
   }
 
   async function signOut() {
-    await act(() => api.post('/session/logout/'));
-    session = await api.get('/session/'); data = null; loadedRoute = '';
+    if (await act(() => api.post('/session/logout/'))) window.location.assign('/');
   }
 
   async function createBill() {

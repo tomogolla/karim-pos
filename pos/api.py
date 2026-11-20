@@ -18,7 +18,7 @@ from .customers import attach_customer, create_customer_for_bill, refresh_custom
 from .forms import CustomerForm, LineForm, PaymentForm, ShopifyCustomerForm, StaffForm
 from .models import Audit, Bill, Customer, CustomerCreation, Line, Product, Staff, SyncJob
 from .services import complete_payment
-from .shopify import pull_catalog, send_job
+from .shopify import credentials_configured, pull_catalog, send_job
 
 
 def api_login_required(view):
@@ -104,7 +104,7 @@ def session(request):
         'user': ({'username': request.user.username,
                   'name': request.user.get_full_name() or request.user.username} if request.user.is_authenticated else None),
         'config': {'currency': settings.POS_CURRENCY,
-                   'shopifyConfigured': bool(settings.SHOPIFY_STORE and settings.SHOPIFY_ACCESS_TOKEN),
+                   'shopifyConfigured': credentials_configured(),
                    'liveSync': settings.SHOPIFY_LIVE_SYNC},
     })
 
@@ -347,7 +347,7 @@ def reports(request):
 def settings_api(request):
     return JsonResponse({'store': settings.SHOPIFY_STORE, 'apiVersion': settings.SHOPIFY_API_VERSION,
                          'currency': settings.POS_CURRENCY, 'liveSync': settings.SHOPIFY_LIVE_SYNC,
-                         'shopifyConfigured': bool(settings.SHOPIFY_STORE and settings.SHOPIFY_ACCESS_TOKEN),
+                         'shopifyConfigured': credentials_configured(),
                          'inventoryBehaviour': settings.SHOPIFY_INVENTORY_BEHAVIOUR})
 
 

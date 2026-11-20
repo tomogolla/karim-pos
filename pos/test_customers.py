@@ -20,7 +20,8 @@ def shopify_customer(customer_id='123'):
                       'currentTotalPriceSet': {'shopMoney': {'amount': '4200.50', 'currencyCode': 'KES'}}},
     }
 
-@override_settings(SHOPIFY_STORE='test-store.myshopify.com', SHOPIFY_ACCESS_TOKEN='fake-test-token')
+@override_settings(SHOPIFY_STORE='test-store.myshopify.com', SHOPIFY_CLIENT_ID='',
+                   SHOPIFY_CLIENT_SECRET='', SHOPIFY_ACCESS_TOKEN='fake-test-token')
 class CustomerTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -93,7 +94,7 @@ class CustomerTests(TestCase):
         customer.refresh_from_db()
         self.assertEqual(customer.last_order_id,'gid://shopify/Order/6513859199159')
 
-    @override_settings(SHOPIFY_ACCESS_TOKEN='')
+    @override_settings(SHOPIFY_CLIENT_ID='', SHOPIFY_CLIENT_SECRET='', SHOPIFY_ACCESS_TOKEN='')
     @patch('pos.customers.graphql')
     def test_unconfigured_search_and_create_never_call_shopify(self,api):
         self.assertEqual(self.client.get(reverse('customer_search_api'),{'q':'Jane'}).status_code,503)

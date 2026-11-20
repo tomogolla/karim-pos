@@ -21,7 +21,7 @@ python manage.py seed_demo
 python manage.py runserver 127.0.0.1:8765
 ```
 
-Open **http://127.0.0.1:8765/app/** and sign in with the account you created. On later runs, `start.ps1` applies migrations and starts the local server (it sets `DJANGO_DEBUG=1`; it does not install dependencies, rebuild the frontend, or seed data).
+Open **http://127.0.0.1:8765/** and sign in with the account you created. After sign-in, the browser redirects to **/app/**. On later runs, `start.ps1` applies migrations and starts the local server (it sets `DJANGO_DEBUG=1`; it does not install dependencies, rebuild the frontend, or seed data).
 
 - **Database:** with `DJANGO_DEBUG=1` and no `DJANGO_DB_NAME`, the app uses SQLite (`db.sqlite3`). Fill in the `DJANGO_DB_*` values in `.env` to use a local PostgreSQL instead, which is closer to production.
 - **Sample data:** `seed_demo` adds eight sample products/services and six staff members. Sample prices are illustrative KES values, not the client's confirmed price list. The command only runs when `DJANGO_DEBUG=1`. Sample products are flagged as demo items and are always blocked from being sent to Shopify; a real catalog import deactivates them.
@@ -58,12 +58,14 @@ Put credentials in the `.env` file (on the server: the production `.env`). Do no
 
 ```dotenv
 SHOPIFY_STORE=your-store.myshopify.com
-SHOPIFY_ACCESS_TOKEN=your-admin-api-access-token
+SHOPIFY_CLIENT_ID=your-dev-dashboard-client-id
+SHOPIFY_CLIENT_SECRET=your-dev-dashboard-client-secret
+SHOPIFY_ACCESS_TOKEN=
 SHOPIFY_LIVE_SYNC=0
 POS_CURRENCY=KES
 ```
 
-Restart the app after changing configuration. The token must be an Admin API access token; an app client ID/secret alone is not that token. OAuth installation/token refresh is not implemented yet. Use a development store first.
+Restart the app after changing configuration. For a Dev Dashboard app, Karim POS exchanges the client credentials for a 24-hour Admin API token, caches it in memory, and requests a replacement 60 seconds before expiry. A Shopify 401 response discards the cached token and retries once with a new token. No refresh cron job or manual token replacement is required. Client credentials only work when the app and store belong to the same Shopify organization. `SHOPIFY_ACCESS_TOKEN` remains as a fallback for an existing legacy admin-created custom app; leave it blank for a new Dev Dashboard app. Use a development store first.
 
 Catalog queries need product/inventory read access. Order creation needs order write access and appropriate customer-data access for the installed app. Confirm actual scopes and protected customer data permissions during installation; do not grant unrelated scopes simply because they appear as alternatives in schema tooling.
 
@@ -146,7 +148,7 @@ All configuration comes from environment variables, read from the real environme
 | `DJANGO_LOG_LEVEL` | – | Console log level, default `INFO`. |
 | `GUNICORN_PORT` | – | Local port gunicorn listens on, default `8765`. |
 | `POS_CURRENCY`, `POS_TIME_ZONE` | – | Default `KES` and `Africa/Nairobi`. |
-| `SHOPIFY_STORE`, `SHOPIFY_ACCESS_TOKEN`, `SHOPIFY_LIVE_SYNC`, `SHOPIFY_INVENTORY_BEHAVIOUR` | – | Shopify connection (see above). `SHOPIFY_STORE`, when set, must look like `your-store.myshopify.com`. Keep `SHOPIFY_LIVE_SYNC=0` until validation is complete. |
+| `SHOPIFY_STORE`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`, `SHOPIFY_ACCESS_TOKEN`, `SHOPIFY_LIVE_SYNC`, `SHOPIFY_INVENTORY_BEHAVIOUR` | – | Shopify connection (see above). New Dev Dashboard apps use both client credential values and leave the legacy access token blank. `SHOPIFY_STORE`, when set, must look like `your-store.myshopify.com`. Keep `SHOPIFY_LIVE_SYNC=0` until validation is complete. |
 
 Security behaviour with debug off: session and CSRF cookies are `Secure`; the session cookie is `HttpOnly` and `SameSite=Lax`; the CSRF cookie is deliberately readable by JavaScript because the SvelteKit client sends it back in the `X-CSRFToken` header. Sessions last 12 hours. Passwords need at least 12 characters and cannot be numeric-only, common, or similar to the username.
 
@@ -156,14 +158,17 @@ Security behaviour with debug off: session and CSRF cookies are `Secure`; the se
 
 ## Deployment notes
 
-Server setup, nginx and systemd configuration are a separate step. This is what that step must provide.
+The repository now includes a DigitalOcean deployment with GitHub Actions,
+systemd, nginx, exact-commit releases, a database-aware health check and
+application rollback. Follow [docs/DIGITALOCEAN_DEPLOYMENT.md](docs/DIGITALOCEAN_DEPLOYMENT.md)
+for the initial server setup and GitHub secret configuration.
 
 **Application**
 
 1. Python 3.12+, a virtualenv, and `pip install -r requirements.txt`.
 2. A PostgreSQL database and user, and a production `.env` (from `.env.example`) owned by the app user with `chmod 600`.
 3. `python manage.py migrate` (this also creates the login-lockout tables), `python manage.py collectstatic --noinput`, and `python manage.py createsuperuser`.
-4. Run `gunicorn config.wsgi:application -c gunicorn.conf.py` from the project directory, under systemd. [gunicorn.conf.py](gunicorn.conf.py) binds to `127.0.0.1:$GUNICORN_PORT` only (default 8765) with 3 workers and a 60-second timeout. It is never exposed publicly.
+4. Run `gunicorn config.wsgi:application -c gunicorn.conf.py` from the project directory, under systemd. [gunicorn.conf.py](gunicorn.conf.py) binds to `127.0.0.1:$GUNICORN_PORT` only (default 8765). The production template uses one worker because the current 1 GB droplet also runs PostgreSQL and another application. It is never exposed publicly.
 5. After a deploy, check `https://pos.example.com/healthz`. It returns `{"status": "ok"}` when the app and database respond, and `503 {"status": "unavailable"}` otherwise. From the server itself, send the right Host header: `curl -H "Host: pos.example.com" http://127.0.0.1:8765/healthz`.
 
 **What nginx must provide** (on the `pos.example.com` server block)
@@ -173,7 +178,7 @@ Server setup, nginx and systemd configuration are a separate step. This is what 
 - **Host header:** `proxy_set_header Host $host;`. Django rejects any host not in `DJANGO_ALLOWED_HOSTS`. Do not make this the `default_server`, so requests for other or unknown hostnames never reach the app.
 - **X-Forwarded-For:** `proxy_set_header X-Forwarded-For $remote_addr;`. This must **overwrite** whatever the client sent. The login lockout counts failures per IP address taken from this header. If nginx passed a client-supplied value through, an attacker could fake a new IP address on every attempt and never be locked out.
 - **X-Forwarded-Proto:** `proxy_set_header X-Forwarded-Proto $scheme;`. This must also be set by nginx and overwrite any client value. Django uses it to know the request arrived over HTTPS (secure cookies, CSRF checks). If it is missing, logins fail CSRF checks; if clients could set it, they could make plain HTTP look secure.
-- **Static files:** serve `/static/` directly from the `staticfiles/` directory that `collectstatic` fills (for example `location /static/ { alias /path/to/karim-pos/staticfiles/; }`). The compiled interface under `/app/` (including `/app/_app/` assets) is served by Django; nginx just proxies it.
+- **Static files:** serve `/static/` directly from the `staticfiles/` directory that `collectstatic` fills (for example `location /static/ { alias /path/to/karim-pos/staticfiles/; }`). The compiled interface uses root-relative `/_app/` assets so it can render both the login at `/` and the workspace under `/app/`; Django serves those assets and nginx proxies them.
 - **Privacy in nginx logs:** nginx's default access log includes query strings, which can contain customer search terms. Use a log format with `$uri` instead of `$request` / `$request_uri` for this site.
 
 `DJANGO_BEHIND_PROXY=1` is only safe once nginx overwrites both forwarded headers as described.
@@ -218,6 +223,8 @@ Browser acceptance: create a mixed service/retail bill, save customer and staff 
 
 ## Shopify references
 
+- [Create apps using the Dev Dashboard](https://shopify.dev/docs/apps/build/dev-dashboard/create-apps-using-dev-dashboard)
+- [Authenticate stores in your organization with client credentials](https://shopify.dev/docs/apps/build/authentication-authorization/client-credentials-grant)
 - [orderCreate](https://shopify.dev/docs/api/admin-graphql/latest/mutations/orderCreate)
 - [OrderCreateOrderInput](https://shopify.dev/docs/api/admin-graphql/latest/input-objects/OrderCreateOrderInput)
 - [OrderCreateLineItemInput](https://shopify.dev/docs/api/admin-graphql/latest/input-objects/OrderCreateLineItemInput)
